@@ -4,15 +4,7 @@ A lightweight, fault-tolerant distributed key-value database built from scratch 
 
 ---
 
-## What Is This Project?
-
-Imagine running a database on a single computer. If that computer crashes, your entire application goes down and you might lose data. 
-
-To solve this, this project connects multiple computers (nodes) into a cluster that acts like a single database. As long as a majority of the nodes are running (for example, 2 out of 3), your data remains completely safe, consistent, and available—even if one computer suddenly crashes or gets disconnected.
-
----
-
-## How It Works (In Plain English)
+## How It Works
 
 1. **Leader Election (The "Boss" Node)**
    - When the cluster starts, the nodes hold an automatic vote.
@@ -58,7 +50,7 @@ Prerequisites
 
     Java 21 JDK or newer installed.
 
-1. Run All Tests
+## 1. Run All Tests
 
 To verify single-node storage, cluster leader election, and distributed replication:
 
@@ -72,7 +64,7 @@ Bash
 
 ./gradlew test
 
-2. Run Specific Test Suites
+## 2. Run Specific Test Suites
 
 If you want to test a specific layer of the system:
 PowerShell
@@ -83,7 +75,7 @@ PowerShell
 # Run log replication & catch-up tests
 .\gradlew.bat test --tests "RaftLogReplicationTest"
 
-3. Build the Project
+## 3. Build the Project
 
 To compile and package the project:
 PowerShell
