@@ -1,0 +1,16 @@
+build/
+.gradle/
+gradle-8.7/
+bin/
+out/
+*.class
+.idea/
+.vscode/
+*.zip
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.tar.gz
+*.exe
+*.log
+.project
+.settings/
