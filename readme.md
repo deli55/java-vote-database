@@ -40,6 +40,7 @@ To solve this, this project connects multiple computers (nodes) into a cluster t
 
 ## Project Structure
 
+```text
 src/
 ├── main/java/com/raftkv/
 │   ├── RaftNodeServer.java        # Core node server, election state, & consensus rules
@@ -48,29 +49,30 @@ src/
 │   ├── Message.java               # Network RPC protocols (Votes, Heartbeats, Append Entries)
 │   └── ProtocolCodec.java         # TCP socket message serialization/deserialization
 └── test/java/com/raftkv/
-├── RaftNodeServerTest.java     # Single-node & WAL crash recovery unit tests
-├── RaftLeaderElectionTest.java # 3-node cluster leader election integration tests
-└── RaftLogReplicationTest.java # Multi-node log replication & catch-up integration tests
+    ├── RaftNodeServerTest.java     # Single-node & WAL crash recovery unit tests
+    ├── RaftLeaderElectionTest.java # 3-node cluster leader election integration tests
+    └── RaftLogReplicationTest.java # Multi-node log replication & catch-up integration tests
 
----
+    How to Run & Test
+Prerequisites
 
-## How to Run & Test
+    Java 21 JDK or newer installed.
 
-### Prerequisites
-- Java 21 JDK or newer installed.
+1. Run All Tests
 
-### 1. Run All Tests
 To verify single-node storage, cluster leader election, and distributed replication:
 
-**Windows (PowerShell/CMD):**
-```powershell
+Windows (PowerShell/CMD):
+PowerShell
+
 .\gradlew.bat test
 
-**Linux / macOS:**
+Linux / macOS:
 Bash
+
 ./gradlew test
 
-### 2. Run Specific Test Suites
+2. Run Specific Test Suites
 
 If you want to test a specific layer of the system:
 PowerShell
@@ -81,7 +83,7 @@ PowerShell
 # Run log replication & catch-up tests
 .\gradlew.bat test --tests "RaftLogReplicationTest"
 
-### 3. Build the Project
+3. Build the Project
 
 To compile and package the project:
 PowerShell
