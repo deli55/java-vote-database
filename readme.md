@@ -1,6 +1,4 @@
 
----
-
 # Java Vote Database (RaftKVStore)
 
 A lightweight, zero-dependency, fault-tolerant distributed key-value store implemented in **Java 21**, powered by the **Raft Consensus Algorithm** and **Write-Ahead Logging (WAL)**.
