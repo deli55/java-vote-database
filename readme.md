@@ -1,7 +1,6 @@
 
 ---
 
-```markdown
 # RaftKVStore
 
 A lightweight, zero-dependency, fault-tolerant distributed key-value store implemented in **Java 21**, powered by the **Raft Consensus Algorithm** and **Write-Ahead Logging (WAL)**.
@@ -13,10 +12,12 @@ A lightweight, zero-dependency, fault-tolerant distributed key-value store imple
 ## Key Features
 
 * **Complete Raft Consensus Implementation:**
-  * **Leader Election:** Randomized election timeouts ($300\text{ ms} - 600\text{ ms}$) with automatic term advancement, self-voting, and candidate step-down logic.
-  * **Heartbeat & Keep-Alive:** Periodic leader heartbeats ($50\text{ ms}$) to maintain leadership and prevent split-brain scenarios.
-  * **Log Replication & Quorum Commit:** Asynchronous parallel log distribution across followers, advancing commit index upon majority ($N/2 + 1$) consensus.
-  * **Follower Catch-Up:** Automatic log reconciliation and truncation upon follower network partitioning or server restarts.
+* **Leader Election:** Randomized election timeouts (300 ms – 600 ms) with automatic term advancement, self-voting, and candidate step-down logic.
+* **Heartbeat & Keep-Alive:** Periodic leader heartbeats (50 ms) to maintain leadership and prevent split-brain scenarios.
+* **Log Replication & Quorum Commit:** Asynchronous parallel log distribution across followers, advancing commit index upon majority (N / 2 + 1) consensus.
+* **Follower Catch-Up:** Automatic log reconciliation and truncation upon follower network partitioning or server restarts.
+
+
 * **Pure Java 21 Engine:** Built with zero external runtime dependencies—utilizes `Executors.newVirtualThreadPerTaskExecutor()` for non-blocking I/O and Java `record` types for log entries and messages.
 * **Durable Write-Ahead Logging (WAL):** Disk-backed append-only `wal.log` file with instant flush semantics for crash resilience and automatic state machine recovery on startup.
 * **Custom Binary Framing Protocol:** Ultra-low overhead 4-byte big-endian length-prefixed socket messaging protocol over plain TCP sockets.
@@ -114,7 +115,7 @@ The project uses the Gradle Shadow Plugin to produce a single self-contained exe
 
 ```bash
 # Clone the repository
-git clone [https://github.com/your-username/java-vote-database.git](https://github.com/your-username/java-vote-database.git)
+git clone https://github.com/your-username/java-vote-database.git
 cd java-vote-database
 
 # Build executable shadow JAR
@@ -205,14 +206,3 @@ Key protocol settings are defined in `RaftNodeServer.java`:
 ## License
 
 Distributed under the MIT License. See `LICENSE` for details.
-
-```
-
-***
-
-<ElicitationsGroup message="How would you like to handle publishing this project to GitHub?">
-  <Elicitation label="Scrub local caches, generate .gitignore, and push to GitHub" query="Give me the commands to clean build artifacts, create a Java .gitignore, and push this RaftKVStore project to GitHub."/>
-  <Elicitation label="Start Project #2: Zero-Allocation Game Archive Parser (C#)" query="Let's start the second C# project: a zero-allocation game asset/script binary archive parser using Span<T"> and MemoryMappedFile." />
-</ElicitationsGroup>
-
-```
