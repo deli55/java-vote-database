@@ -1,10 +1,9 @@
+```markdown
 # Java 21 Distributed Raft Key-Value Store
 
-A lightweight, fault-tolerant distributed key-value database built from scratch in Java 21 using custom TCP networking and the Raft consensus algorithm.
+A lightweight, fault-tolerant distributed key-value database built from scratch in Java 21 using custom TCP networking and the Raft consensus algorithm. This project connects multiple computers (nodes) into a cluster that acts like a single database. As long as a majority of the nodes are running (for example, 2 out of 3), your data remains completely safe, consistent, and available—even if one computer suddenly crashes or gets disconnected.
 
----
-
-## How It Works
+## How It Works (In Plain English)
 
 1. **Leader Election (The "Boss" Node)**
    - When the cluster starts, the nodes hold an automatic vote.
@@ -45,39 +44,63 @@ src/
     ├── RaftLeaderElectionTest.java # 3-node cluster leader election integration tests
     └── RaftLogReplicationTest.java # Multi-node log replication & catch-up integration tests
 
-    How to Run & Test
-Prerequisites
+```
 
-    Java 21 JDK or newer installed.
+---
 
-## 1. Run All Tests
+## How to Run & Test
+
+### Prerequisites
+
+* Java 21 JDK or newer installed.
+
+### 1. Run All Tests
 
 To verify single-node storage, cluster leader election, and distributed replication:
 
-Windows (PowerShell/CMD):
-PowerShell
+**Windows (PowerShell/CMD):**
 
+```powershell
 .\gradlew.bat test
 
-Linux / macOS:
-Bash
+```
 
+**Linux / macOS:**
+
+```bash
 ./gradlew test
 
-## 2. Run Specific Test Suites
+```
+
+### 2. Run Specific Test Suites
 
 If you want to test a specific layer of the system:
-PowerShell
 
+```powershell
 # Run only leader election tests
 .\gradlew.bat test --tests "RaftLeaderElectionTest"
 
 # Run log replication & catch-up tests
 .\gradlew.bat test --tests "RaftLogReplicationTest"
 
-## 3. Build the Project
+```
+
+### 3. Build the Project
 
 To compile and package the project:
-PowerShell
 
+```powershell
 .\gradlew.bat build
+
+```
+
+```
+
+---
+
+### Key Fixes Applied:
+1. **Directory Tree:** Wrapped in a ```text code block so ASCII lines align correctly on GitHub.
+2. **Code Fences:** Added closing ``` to `.\gradlew.bat test` so headings like `### 2. Run Specific Test Suites` are rendered properly instead of being swallowed into code blocks.
+3. **Language Tags:** Replaced loose text labels (`PowerShell`, `Bash`) with formal code fence tags (```powershell and ```bash).
+
+```
