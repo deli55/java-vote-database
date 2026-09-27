@@ -1,106 +1,218 @@
-```markdown
-# Java 21 Distributed Raft Key-Value Store
-
-A lightweight, fault-tolerant distributed key-value database built from scratch in Java 21 using custom TCP networking and the Raft consensus algorithm. This project connects multiple computers (nodes) into a cluster that acts like a single database. As long as a majority of the nodes are running (for example, 2 out of 3), your data remains completely safe, consistent, and available—even if one computer suddenly crashes or gets disconnected.
-
-## How It Works (In Plain English)
-
-1. **Leader Election (The "Boss" Node)**
-   - When the cluster starts, the nodes hold an automatic vote.
-   - One node is elected as the Leader, while the others become Followers.
-   - All database updates (PUT / DELETE) go through the Leader.
-   - If the Leader crashes, the Followers detect the silence within ~300ms and automatically elect a new Leader.
-
-2. **Majority Consensus (2 out of 3 Agreement)**
-   - When you write data, the Leader sends a copy to all Followers.
-   - The Leader only confirms the write as saved (committed) once a majority (at least 2 out of 3 nodes) confirms they received it.
-   - This prevents data loss if a single node suddenly disconnects.
-
-3. **Write-Ahead Log (WAL) & Crash Recovery**
-   - Every operation is written to a disk file (Write-Ahead Log) before it is processed in memory.
-   - If a node loses power or restarts, it reads its log file on boot and restores its state instantly.
-
-4. **Follower Catch-Up**
-   - If a Follower goes offline while writes are happening, it will fall behind.
-   - When it comes back online, the Leader detects what it missed and automatically sends the missing history until the Follower is caught up.
-
-5. **Modern Java 21 Infrastructure**
-   - Uses Java 21 Virtual Threads to handle concurrent TCP socket connections across nodes efficiently with minimal memory overhead.
 
 ---
 
-## Project Structure
+```markdown
+# RaftKVStore
+
+A lightweight, zero-dependency, fault-tolerant distributed key-value store implemented in **Java 21**, powered by the **Raft Consensus Algorithm** and **Write-Ahead Logging (WAL)**.
+
+`RaftKVStore` delivers linearizable state machine replication across a cluster of nodes using modern Java features—including **Virtual Threads (Project Loom)** and **Records**—over a custom length-prefixed TCP network protocol, relying solely on the standard JDK.
+
+---
+
+## Key Features
+
+* **Complete Raft Consensus Implementation:**
+  * **Leader Election:** Randomized election timeouts ($300\text{ ms} - 600\text{ ms}$) with automatic term advancement, self-voting, and candidate step-down logic.
+  * **Heartbeat & Keep-Alive:** Periodic leader heartbeats ($50\text{ ms}$) to maintain leadership and prevent split-brain scenarios.
+  * **Log Replication & Quorum Commit:** Asynchronous parallel log distribution across followers, advancing commit index upon majority ($N/2 + 1$) consensus.
+  * **Follower Catch-Up:** Automatic log reconciliation and truncation upon follower network partitioning or server restarts.
+* **Pure Java 21 Engine:** Built with zero external runtime dependencies—utilizes `Executors.newVirtualThreadPerTaskExecutor()` for non-blocking I/O and Java `record` types for log entries and messages.
+* **Durable Write-Ahead Logging (WAL):** Disk-backed append-only `wal.log` file with instant flush semantics for crash resilience and automatic state machine recovery on startup.
+* **Custom Binary Framing Protocol:** Ultra-low overhead 4-byte big-endian length-prefixed socket messaging protocol over plain TCP sockets.
+* **Thread-Safe State Machine:** Uses a fair `ReentrantReadWriteLock` wrapping a `ConcurrentHashMap` for high-throughput concurrent reads and writes.
+* **Interactive CLI & Embedded Server:** Built-in command-line interface supporting direct `PUT`, `GET`, `DELETE`, and `NO_OP` operations.
+
+---
+
+## Architecture & System Topology
 
 ```text
-src/
-├── main/java/com/raftkv/
-│   ├── RaftNodeServer.java        # Core node server, election state, & consensus rules
-│   ├── KVStoreStateMachine.java   # In-memory key-value store & Write-Ahead Log (WAL)
-│   ├── LogEntry.java              # Log entry model (term, index, operation)
-│   ├── Message.java               # Network RPC protocols (Votes, Heartbeats, Append Entries)
-│   └── ProtocolCodec.java         # TCP socket message serialization/deserialization
-└── test/java/com/raftkv/
-    ├── RaftNodeServerTest.java     # Single-node & WAL crash recovery unit tests
-    ├── RaftLeaderElectionTest.java # 3-node cluster leader election integration tests
-    └── RaftLogReplicationTest.java # Multi-node log replication & catch-up integration tests
+                                  ┌──────────────────────────────┐
+                                  │      Client / CLI Shell      │
+                                  └──────────────┬───────────────┘
+                                                 │
+                                                 │ CLIENT_REQUEST (TCP)
+                                                 ▼
+ ┌─────────────────────────────────────────────────────────────────────────────────────────┐
+ │ LEADER NODE                                                                             │
+ │                                                                                         │
+ │  ┌──────────────────┐     Log Append     ┌──────────────────────┐     Sync Flush    ┌──┴────────────┐
+ │  │  RaftNodeServer  │ ─────────────────> │ KVStoreStateMachine  │ ────────────────> │  wal.log      │
+ │  └────────┬─────────┘                    └──────────────────────┘                   └───────────────┘
+ └───────────┼─────────────────────────────────────────────────────────────────────────────┘
+             │
+             │ APPEND_ENTRIES (Virtual Threads)
+             ├─────────────────────────────────────────┐
+             ▼                                         ▼
+ ┌─────────────────────────┐               ┌─────────────────────────┐
+ │ FOLLOWER NODE 1         │               │ FOLLOWER NODE 2         │
+ │                         │               │                         │
+ │  ┌───────────────────┐  │               │  ┌───────────────────┐  │
+ │  │  RaftNodeServer   │  │               │  │  RaftNodeServer   │  │
+ │  └────────┬──────────┘  │               │  └────────┬──────────┘  │
+ │           ▼             │               │           ▼             │
+ │  ┌───────────────────┐  │               │  ┌───────────────────┐  │
+ │  │ wal.log (Disk)    │  │               │  │ wal.log (Disk)    │  │
+ │  └───────────────────┘  │               │  └───────────────────┘  │
+ └─────────────────────────┘               └─────────────────────────┘
 
 ```
 
 ---
 
-## How to Run & Test
+## Network Protocol Specification
 
-### Prerequisites
+Communication between client-to-node and node-to-node utilizes a custom 4-byte big-endian length-prefixed UTF-8 encoded binary frame:
 
-* Java 21 JDK or newer installed.
-
-### 1. Run All Tests
-
-To verify single-node storage, cluster leader election, and distributed replication:
-
-**Windows (PowerShell/CMD):**
-
-```powershell
-.\gradlew.bat test
+```text
++-------------------+-------------------------------------+
+| LENGTH (4 bytes)  | PAYLOAD (UTF-8 Encoded String)      |
+| Big-Endian Integer| Max: 1,048,576 bytes (1 MB)         |
++-------------------+-------------------------------------+
 
 ```
 
-**Linux / macOS:**
+### Supported Message Types (`MessageType`)
+
+* `CLIENT_REQUEST` / `CLIENT_RESPONSE`: Inter-node client reads and writes.
+* `VOTE_REQUEST` / `VOTE_RESPONSE`: Candidate leader election votes.
+* `APPEND_ENTRIES` / `APPEND_ENTRIES_RESPONSE`: Log replication payloads and leader heartbeats.
+* `HEARTBEAT`: Periodic cluster health verification.
+
+---
+
+## Package Layout
+
+```text
+com.raftkv/
+├── RaftKVStore.java            # Main entry point & interactive CLI interface
+├── RaftNodeServer.java         # Raft consensus engine, peer management & RPC server
+├── KVStoreStateMachine.java    # Thread-safe Key-Value store with disk-backed WAL
+├── LogEntry.java               # Immutable record for log entries
+├── NodeState.java              # Enum: FOLLOWER, CANDIDATE, LEADER
+└── protocol/
+    ├── CommandType.java        # Enum: PUT, GET, DELETE, NO_OP
+    ├── MessageType.java        # Enum: CLIENT_REQUEST, APPEND_ENTRIES, VOTE_REQUEST, etc.
+    ├── Message.java            # Network message serialization record
+    └── ProtocolCodec.java      # Socket byte encoder / decoder
+
+```
+
+---
+
+## Prerequisites
+
+* **Java Development Kit (JDK):** Version 21 or higher.
+* **Build Tool:** Gradle 8.7+ (wrapper included).
+
+---
+
+## Building the Project
+
+The project uses the Gradle Shadow Plugin to produce a single self-contained executable Fat JAR.
 
 ```bash
+# Clone the repository
+git clone [https://github.com/your-username/java-vote-database.git](https://github.com/your-username/java-vote-database.git)
+cd java-vote-database
+
+# Build executable shadow JAR
+./gradlew shadowJar
+
+```
+
+The compiled artifact will be located at:
+
+```text
+build/libs/java-vote-database-1.0.0.jar
+
+```
+
+---
+
+## Usage Guide
+
+### 1. Launching a Standalone Node
+
+Start a server on default port `9000` with data stored in `./data`:
+
+```bash
+java -jar build/libs/java-vote-database-1.0.0.jar
+
+```
+
+Start a node on a custom port and data directory:
+
+```bash
+java -jar build/libs/java-vote-database-1.0.0.jar 9001 /var/lib/raft-data
+
+```
+
+### 2. Interactive CLI Commands
+
+Once launched, you can issue commands directly through the interactive console shell:
+
+```text
+RaftKVStore> PUT user:1001 {"name":"Alice","role":"admin"}
+SUCCESS
+
+RaftKVStore> GET user:1001
+user:1001 = {"name":"Alice","role":"admin"}
+
+RaftKVStore> DELETE user:1001
+SUCCESS
+
+RaftKVStore> quit
+Exiting RaftKVStore.
+
+```
+
+---
+
+## Running the Unit & Integration Test Suite
+
+The test suite includes multi-node integration tests simulating 3-node clusters, leader elections, network partitioning, and log catch-up:
+
+```bash
+# Run all unit and integration tests
 ./gradlew test
 
 ```
 
-### 2. Run Specific Test Suites
+### Key Test Coverage
 
-If you want to test a specific layer of the system:
-
-```powershell
-# Run only leader election tests
-.\gradlew.bat test --tests "RaftLeaderElectionTest"
-
-# Run log replication & catch-up tests
-.\gradlew.bat test --tests "RaftLogReplicationTest"
-
-```
-
-### 3. Build the Project
-
-To compile and package the project:
-
-```powershell
-.\gradlew.bat build
-
-```
-
-```
+* `RaftNodeServerTest`: Single-node operation, WAL recovery, concurrent reads/writes.
+* `RaftLeaderElectionTest`: Multi-node cluster elections, term increments, heartbeat exchanges.
+* `RaftLogReplicationTest`: Distributed log replication, quorum commits, follower log truncation and recovery.
 
 ---
 
-### Key Fixes Applied:
-1. **Directory Tree:** Wrapped in a ```text code block so ASCII lines align correctly on GitHub.
-2. **Code Fences:** Added closing ``` to `.\gradlew.bat test` so headings like `### 2. Run Specific Test Suites` are rendered properly instead of being swallowed into code blocks.
-3. **Language Tags:** Replaced loose text labels (`PowerShell`, `Bash`) with formal code fence tags (```powershell and ```bash).
+## Configuration & Tuning Parameters
+
+Key protocol settings are defined in `RaftNodeServer.java`:
+
+| Parameter | Default Value | Description |
+| --- | --- | --- |
+| `ELECTION_TIMEOUT_MIN_MS` | `300 ms` | Minimum randomized election timeout |
+| `ELECTION_TIMEOUT_MAX_MS` | `600 ms` | Maximum randomized election timeout |
+| `HEARTBEAT_INTERVAL_MS` | `50 ms` | Leader heartbeat push frequency |
+| `MAX_MESSAGE_SIZE` | `1,048,576` (1 MB) | Maximum socket frame size |
+| `CLIENT_SOCKET_TIMEOUT_MS` | `30,000 ms` | Socket read timeout |
+
+---
+
+## License
+
+Distributed under the MIT License. See `LICENSE` for details.
+
+```
+
+***
+
+<ElicitationsGroup message="How would you like to handle publishing this project to GitHub?">
+  <Elicitation label="Scrub local caches, generate .gitignore, and push to GitHub" query="Give me the commands to clean build artifacts, create a Java .gitignore, and push this RaftKVStore project to GitHub."/>
+  <Elicitation label="Start Project #2: Zero-Allocation Game Archive Parser (C#)" query="Let's start the second C# project: a zero-allocation game asset/script binary archive parser using Span<T"> and MemoryMappedFile." />
+</ElicitationsGroup>
 
 ```
